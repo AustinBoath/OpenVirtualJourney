@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Hosted Strava Route Tracker</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #controls {
+            padding: 10px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Strava Route Tracker</h1>
+
+    <div id="controls">
+        <input type="file" id="gpxUpload" accept=".gpx">
+        <button onclick="loadGPX()">Load GPX</button>
+        <br>
+        <input type="text" id="cityStart" placeholder="Enter start city">
+        <input type="text" id="cityEnd" placeholder="Enter destination city">
+        <button onclick="routeBetweenCities()">Find Route</button>
+        <br>
+        <input type="number" id="manualDistance" placeholder="Enter distance (km)">
+        <button onclick="updateProgress()">Update Progress</button>
+        <p><strong>Progress:</strong> <span id="progress">0</span> km / <span id="routeDistance">0</span> km</p>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet-gpx/gpx.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let map = L.map('map').setView([-34.9285, 138.6007], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            let totalRouteDistance = 0;
+            let progressDistance = 0;
+            let routeLine;
+            let progressLine;
+            let routingControl;
+
+            function routeBetweenCities() {
+                let startCity = document.getElementById("cityStart").value;
+                let endCity = document.getElementById("cityEnd").value;
+                if (!startCity || !endCity) {
+                    alert("Enter both cities.");
+                    return;
+                }
+
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${startCity}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length === 0) {
+                            alert("Start city not found.");
+                            return;
+                        }
+                        let startLatLng = L.latLng(data[0].lat, data[0].lon);
+                        return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${endCity}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.length === 0) {
+                                    alert("End city not found.");
+                                    return;
+                                }
+                                let endLatLng = L.latLng(data[0].lat, data[0].lon);
+                                if (routingControl) {
+                                    map.removeControl(routingControl);
+                                }
+                                routingControl = L.Routing.control({
+                                    waypoints: [startLatLng, endLatLng],
+                                    routeWhileDragging: true
+                                }).addTo(map);
+                                routingControl.on('routesfound', function(e) {
+                                    totalRouteDistance = (e.routes[0].summary.totalDistance / 1000).toFixed(2);
+                                    document.getElementById('routeDistance').textContent = totalRouteDistance;
+                                    routeLine = e.routes[0].coordinates;
+                                });
+                            });
+                    });
+            }
+
+            function updateProgress() {
+                let inputDistance = parseFloat(document.getElementById("manualDistance").value);
+                if (isNaN(inputDistance) || inputDistance <= 0) {
+                    alert("Enter a valid distance.");
+                    return;
+                }
+                progressDistance = inputDistance;
+                document.getElementById('progress').textContent = progressDistance.toFixed(2);
+                if (!routeLine) {
+                    alert("No route found! Load a GPX file or generate a route first.");
+                    return;
+                }
+                let progressRatio = progressDistance / totalRouteDistance;
+                let highlightedCoords = routeLine.slice(0, Math.floor(routeLine.length * progressRatio));
+                if (progressLine) {
+                    map.removeLayer(progressLine);
+                }
+                progressLine = L.polyline(highlightedCoords, { color: 'green', weight: 5 }).addTo(map);
+            }
+
+            window.routeBetweenCities = routeBetweenCities;
+            window.updateProgress = updateProgress;
+        });
+    </script>
+
+<footer style="margin-top: 20px; padding: 10px; background: #f8f8f8;">
+        <p><strong>Why did the bicycle fall over?</strong> Because it was two-tired! 🚴‍♂️</p>
+        <p>Created by <strong>Austin Boath</strong>. This project is open source—do whatever you want with it, as long as you ride safe! 🚲</p>
+    </footer>
+    <audio id="backgroundMusic" autoplay loop oncanplay="this.play()">
+        <source src="Loopster.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <button onclick="toggleMusic()" style="position: fixed; bottom: 10px; right: 10px;">Mute/Unmute Music</button>
+
+    <script>
+        function toggleMusic() {
+            let music = document.getElementById("backgroundMusic");
+            if (music.paused) {
+                music.play();
+            } else {
+                music.muted = !music.muted;
+            }
+            if (music.muted) {
+                alert("Finally, some peace and quiet! But admit it, you’ll miss it...");
+            }
+        }
+            let music = document.getElementById("backgroundMusic");
+            music.muted = !music.muted;
+        }
+    </script>
+</body>
+</html>

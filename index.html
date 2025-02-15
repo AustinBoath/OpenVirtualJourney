@@ -5,25 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Self-Hosted Strava Route Tracker</title>
 
-    <!-- Leaflet CSS -->
+    <!-- Leaflet CSS for map display and routing -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
 
     <style>
+        /* Basic styling for the page layout */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             margin: 0;
             padding: 0;
         }
+        
         #map {
             height: 500px;
             width: 100%;
             margin-top: 10px;
         }
+        
         #controls {
             padding: 10px;
         }
+        
         input, button {
             margin: 5px;
             padding: 8px;
@@ -31,13 +35,10 @@
     </style>
 </head>
 <body>
-
     <h1>Strava Route Tracker</h1>
 
+    <!-- Input fields for start/end locations and progress tracking -->
     <div id="controls">
-        <input type="file" id="gpxUpload" accept=".gpx">
-        <button onclick="loadGPX()">Load GPX</button>
-        <br>
         <input type="text" id="cityStart" placeholder="Enter start city">
         <input type="text" id="cityEnd" placeholder="Enter destination city">
         <button onclick="routeBetweenCities()">Find Route</button>
@@ -47,15 +48,16 @@
         <p><strong>Progress:</strong> <span id="progress">0</span> km / <span id="routeDistance">0</span> km</p>
     </div>
 
+    <!-- Map container -->
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
+    <!-- Leaflet JavaScript dependencies -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-    <script src="https://unpkg.com/leaflet-gpx/gpx.js"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // Initialize map centered around Adelaide, SA
             let map = L.map('map').setView([-34.9285, 138.6007], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
@@ -67,6 +69,7 @@
             let progressLine;
             let routingControl;
 
+            // Function to find a route between two cities
             function routeBetweenCities() {
                 let startCity = document.getElementById("cityStart").value;
                 let endCity = document.getElementById("cityEnd").value;
@@ -75,6 +78,7 @@
                     return;
                 }
 
+                // Fetch coordinates for the start city
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${startCity}`)
                     .then(response => response.json())
                     .then(data => {
@@ -83,6 +87,8 @@
                             return;
                         }
                         let startLatLng = L.latLng(data[0].lat, data[0].lon);
+                        
+                        // Fetch coordinates for the end city
                         return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${endCity}`)
                             .then(response => response.json())
                             .then(data => {
@@ -91,13 +97,19 @@
                                     return;
                                 }
                                 let endLatLng = L.latLng(data[0].lat, data[0].lon);
+                                
+                                // Remove previous route if exists
                                 if (routingControl) {
                                     map.removeControl(routingControl);
                                 }
+                                
+                                // Create new route
                                 routingControl = L.Routing.control({
                                     waypoints: [startLatLng, endLatLng],
                                     routeWhileDragging: true
                                 }).addTo(map);
+                                
+                                // Capture route coordinates
                                 routingControl.on('routesfound', function(e) {
                                     totalRouteDistance = (e.routes[0].summary.totalDistance / 1000).toFixed(2);
                                     document.getElementById('routeDistance').textContent = totalRouteDistance;
@@ -107,6 +119,7 @@
                     });
             }
 
+            // Function to update progress along the route
             function updateProgress() {
                 let inputDistance = parseFloat(document.getElementById("manualDistance").value);
                 if (isNaN(inputDistance) || inputDistance <= 0) {
@@ -115,50 +128,35 @@
                 }
                 progressDistance = inputDistance;
                 document.getElementById('progress').textContent = progressDistance.toFixed(2);
+                
+                // Ensure route is loaded before updating progress
                 if (!routeLine) {
-                    alert("No route found! Load a GPX file or generate a route first.");
+                    alert("No route found! Load a route first.");
                     return;
                 }
-                let progressRatio = progressDistance / totalRouteDistance;
-                let highlightedCoords = routeLine.slice(0, Math.floor(routeLine.length * progressRatio));
+                
+                // Calculate progress and highlight completed sections in green
+                let traveledDistance = 0;
+                let highlightedCoords = [];
+                for (let i = 0; i < routeLine.length - 1; i++) {
+                    let segmentDistance = map.distance(routeLine[i], routeLine[i + 1]) / 1000;
+                    traveledDistance += segmentDistance;
+                    highlightedCoords.push(routeLine[i]);
+                    if (traveledDistance >= progressDistance) {
+                        break;
+                    }
+                }
+                
                 if (progressLine) {
                     map.removeLayer(progressLine);
                 }
                 progressLine = L.polyline(highlightedCoords, { color: 'green', weight: 5 }).addTo(map);
             }
 
+            // Expose functions to global scope
             window.routeBetweenCities = routeBetweenCities;
             window.updateProgress = updateProgress;
         });
-    </script>
-
-<footer style="margin-top: 20px; padding: 10px; background: #f8f8f8;">
-        <p><strong>Why did the bicycle fall over?</strong> Because it was two-tired! 🚴‍♂️</p>
-        <p>Created by <strong>Austin Boath</strong>. This project is open source—do whatever you want with it, as long as you ride safe! 🚲</p>
-    </footer>
-    <audio id="backgroundMusic" autoplay loop>
-        <source src="wheels.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
-    </audio>
-    
-    <script>
-     else {
-                music.muted = !music.muted;
-            }
-            if (music.muted) {
-                alert("Finally, some peace and quiet! But admit it, you’ll miss it...");
-            }
-        }
-            let music = document.getElementById("backgroundMusic");
-            music.muted = !music.muted;
-        }
-    </script>
-    <button onclick="toggleMusic()" style="position: fixed; top: 10px; right: 10px; padding: 8px 12px; background: #C0C0C0; color: black; border: 2px solid black; cursor: pointer; box-shadow: 2px 2px black;">Toggle Mute</button>
-    <script>
-        function toggleMusic() {
-            let music = document.getElementById("backgroundMusic");
-            music.muted = !music.muted;
-        }
     </script>
 </body>
 </html>

@@ -35,8 +35,6 @@
     <h1>Strava Route Tracker</h1>
 
     <div id="controls">
-        <p id="errorMessage" style="color: red; font-weight: bold;"></p>
-        <p id="clickCounter" style="display: none; color: blue; font-weight: bold;">Stupidity Clicker: 0</p>
         <input type="file" id="gpxUpload" accept=".gpx">
         <button onclick="loadGPX()">Load GPX</button>
         <br>
@@ -109,42 +107,12 @@
                     });
             }
 
-            let clickAttempts = 0;
-        function updateProgress() {
+            function updateProgress() {
                 let inputDistance = parseFloat(document.getElementById("manualDistance").value);
                 if (isNaN(inputDistance) || inputDistance <= 0) {
-                clickAttempts++;
-                let errorMessage = document.getElementById("errorMessage");
-                let clickCounter = document.getElementById("clickCounter");
-                
-                switch (clickAttempts) {
-                    case 1:
-                        errorMessage.textContent = "Enter a valid distance.";
-                        break;
-                    case 2:
-                        errorMessage.textContent = "Stop clicking. It won't do anything if there's no distance!";
-                        break;
-                    case 3:
-                        errorMessage.textContent = "Seriously, do you think clicking more will fix it?";
-                        break;
-                    case 4:
-                        errorMessage.textContent = "At this point, I'm losing faith in you...";
-                        break;
-                    case 5:
-                        errorMessage.textContent = "Fine. You win. Welcome to the Stupidity Clicker.";
-                        clickCounter.style.display = "block";
-                        break;
-                    default:
-                        clickCounter.textContent = `Stupidity Clicker: ${clickAttempts - 5}`;
-                }
-                return;
-            }
                     alert("Enter a valid distance.");
                     return;
                 }
-                clickAttempts = 0;
-                document.getElementById("errorMessage").textContent = "";
-                document.getElementById("clickCounter").style.display = "none";
                 progressDistance = inputDistance;
                 document.getElementById('progress').textContent = progressDistance.toFixed(2);
                 if (!routeLine) {
@@ -168,37 +136,26 @@
         <p><strong>Why did the bicycle fall over?</strong> Because it was two-tired! 🚴‍♂️</p>
         <p>Created by <strong>Austin Boath</strong>. This project is open source—do whatever you want with it, as long as you ride safe! 🚲</p>
     </footer>
-    <audio id="backgroundMusic" autoplay loop oncanplay="this.play()">
-        <source src="Loopster.mp3" type="audio/mpeg">
+    <audio id="backgroundMusic" autoplay loop>
+        <source src="wheels.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
-    <button onclick="toggleMusic()" style="position: fixed; bottom: 10px; right: 10px;">Mute/Unmute Music</button>
-    <p id="muteMessage" style="color: red; font-weight: bold;"></p>
-
+    
     <script>
-        function toggleMusic() {
-            let music = document.getElementById("backgroundMusic");
-            if (music.muted) {
-                music.muted = false;
-                document.getElementById("muteMessage").textContent = "Enjoy the tunes! 🎵";
-            } else {
-                music.muted = true;
-                document.getElementById("muteMessage").textContent = "Finally, some peace and quiet! But admit it, you’ll miss it...";
-                setTimeout(() => {
-                    document.getElementById("muteMessage").textContent = "";
-                }, 3000);
-            }
-        }
-            let music = document.getElementById("backgroundMusic");
-            if (music.paused) {
-                music.play();
-            } else {
+     else {
                 music.muted = !music.muted;
             }
             if (music.muted) {
                 alert("Finally, some peace and quiet! But admit it, you’ll miss it...");
             }
         }
+            let music = document.getElementById("backgroundMusic");
+            music.muted = !music.muted;
+        }
+    </script>
+    <button onclick="toggleMusic()" style="position: fixed; top: 10px; right: 10px; padding: 8px 12px; background: #C0C0C0; color: black; border: 2px solid black; cursor: pointer; box-shadow: 2px 2px black;">Toggle Mute</button>
+    <script>
+        function toggleMusic() {
             let music = document.getElementById("backgroundMusic");
             music.muted = !music.muted;
         }
